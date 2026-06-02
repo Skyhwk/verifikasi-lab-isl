@@ -1,7 +1,13 @@
-import { encrypt } from "./Crypto";
+import { encryptSlice } from './Crypto';
 
 const makeSlice = (controller, method) => {
-    return encrypt(JSON.stringify({ controller, function: method }));
+    const obj = {
+        controller,
+        function: method,
+        ts: Math.floor(Date.now() / 1000),
+    };
+
+    return encryptSlice(JSON.stringify(obj));
 };
 
 export default makeSlice;
