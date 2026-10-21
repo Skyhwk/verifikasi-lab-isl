@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Modal, Button, Form, Card } from "react-bootstrap";
 import QrScanner from "qr-scanner";
 import Swal from "sweetalert2";
-import { QrCode, SwitchCamera, X } from "lucide-react";
+import { Check, QrCode, SwitchCamera, X } from "lucide-react";
 import * as Api from "@/services/api";
 import makeSlice from "@/modules/crypto/makeSlice";
 import { useHandleError } from "@/services/useHandleError";
@@ -29,6 +29,8 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
   const [isScannerActive, setIsScannerActive] = useState(false);
   const [dataBottles, setDataBottles] = useState([]);
   const [noSampel, setNoSampel] = useState("");
+  const [scanType, setScanType] = useState(null);
+  const [penamaanTitik, setPenamaanTitik] = useState("");
   const [activeBottle, setActiveBottle] = useState(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
 
@@ -118,6 +120,8 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
     setScannedValue("");
     setDataBottles([]);
     setNoSampel("");
+    setScanType(null);
+    setPenamaanTitik("");
     setActiveBottle(null);
     onHide();
   };
@@ -182,7 +186,12 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
       );
 
       if (response.status === "200") {
-        setNoSampel(response.no_sampel);
+        const resolvedNoSampel = response.no_sampel || value;
+        const isSampleNumber = String(value).includes("/");
+        setScanType(isSampleNumber ? "sampel" : "botol");
+        setNoSampel(resolvedNoSampel);
+        setScannedValue(resolvedNoSampel);
+        setPenamaanTitik(response.penamaan_titik || "");
         const bottlesWithDisiapkan = response.data_botol;
 
         setDataBottles((prevBottles) => {
@@ -231,6 +240,8 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
         Toast.fire({ icon: "success", title: response.message });
       } else {
         setNoSampel("");
+        setScanType(null);
+        setPenamaanTitik("");
         setDataBottles([]);
         Toast.fire({
           icon: "error",
@@ -239,6 +250,8 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
       }
     } catch (error) {
       setNoSampel("");
+      setScanType(null);
+      setPenamaanTitik("");
       setDataBottles([]);
       handleError(error);
     }
@@ -347,10 +360,10 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
                   onBlur={(e) => {
                     e.preventDefault();
                     setIsInputFocused(false);
-                    // Trigger check when leaving the field
-                    if (scannedValue.trim()) {
-                      checkBottleData(scannedValue);
-                    }
+                    const val = e.target.value?.trim();
+                    if (!val) return;
+                    if (noSampel && val === noSampel) return;
+                    checkBottleData(val);
                   }}
                   placeholder="Enter sample number or scan QR code"
                 />
@@ -362,36 +375,55 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
                   <QrCode size={16} />
                 </Button>
               </div>
+              {penamaanTitik ? (
+                <div className="titik-box mt-3">
+                  <span className="titik-label">Penamaan Titik</span>
+                  <div className="titik-value">{String(penamaanTitik).replace(/&amp;/g, "&")}</div>
+                </div>
+              ) : null}
             </Form.Group>
           </div>
           {dataBottles && dataBottles.length > 0 && (
             <>
-              <div className="mb-3">
-                <div className="row">
-                  {dataBottles.map((bottle, index) => (
-                    <div key={index} className="col-6 text-center mb-3">
-                      <Card
-                        onClick={() => setActiveBottle(bottle.koding)}
-                        className={`h-100 ${
-                          isReady(bottle) ? "bottle-ready" : "bottle-not-ready"
-                        }`}
-                      >
-                        <Card.Body>
-                          <Card.Title>{getBottleLabel(bottle)}</Card.Title>
-                          <Card.Text>
-                            <strong>Jumlah:</strong> {bottle.jumlah}
-                            <br />
-                            <strong>Disiapkan:</strong>{" "}
-                            {bottle.disiapkan || "-"}
-                          </Card.Text>
-                        </Card.Body>
-                      </Card>
-                    </div>
-                  ))}
-                </div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <h6 className="mb-0">Informasi Botol</h6>
+                <small className="text-muted">
+                  {dataBottles.filter((bottle) => isReady(bottle)).length}/{dataBottles.length} lengkap
+                </small>
+              </div>
+              <div className="bottle-info-list">
+                {dataBottles.map((bottle, index) => {
+                  const prepared = Number(bottle.disiapkan || 0);
+                  const qty = Number(bottle.jumlah || 0);
+                  const ready = isReady(bottle);
+                  const pct = prepared > 0 ? Math.min(100, Math.round((qty / prepared) * 100)) : 0;
+                  const name = getBottleLabel(bottle);
+
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      className={`bottle-row${ready ? " is-ready" : ""}${activeBottle === bottle.koding ? " is-active" : ""}`}
+                      onClick={() => setActiveBottle(bottle.koding)}
+                    >
+                      <div className="bottle-row-main">
+                        <span className="bottle-name">{name}</span>
+                        <span className="bottle-count">
+                          {ready ? <Check size={16} /> : null}
+                          {qty}
+                          <small>/{prepared || 0}</small>
+                        </span>
+                      </div>
+                      <div className="bottle-bar">
+                        <span style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="bottle-meta">{ready ? "Lengkap" : qty > 0 ? "Sebagian discan" : "Belum discan"}</div>
+                    </button>
+                  );
+                })}
               </div>
 
-              {activeBottle && scannedValue.includes("/") && (
+              {activeBottle && scanType === "sampel" && (
                 <div className="mb-3">
                   {dataBottles
                     .filter((bottle) => bottle.koding === activeBottle)

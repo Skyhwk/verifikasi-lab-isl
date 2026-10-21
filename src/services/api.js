@@ -27,17 +27,14 @@ const buildFormData = (formData, data, parentKey) => {
     }
 };
 
-export const authLogin = async (username, password, mode) => {
-    try {
-        const response = await api.post("/gettoken", {
-            identity: username,
-            password: password,
-            mode: mode,
-        });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+export const authLogin = async (username, password, confirmDisplace = false, rememberMe = false) => {
+    const response = await api.post("/gettoken", {
+        identity: username,
+        password: password,
+        confirm_displace: confirmDisplace,
+        remember_me: rememberMe,
+    });
+    return response.data;
 };
 
 export const getProfile = async () => {

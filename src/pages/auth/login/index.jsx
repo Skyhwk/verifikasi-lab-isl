@@ -1,8 +1,7 @@
 import Head from "next/head";
-import Link from "next/link";
 import Swal from "sweetalert2";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { LogIn } from "lucide-react";
 import * as Api from "@/services/api";
 import { useRouter } from "next/router";
@@ -22,9 +21,43 @@ const Toast = Swal.mixin({
     },
 });
 
+const formatSessionDate = value => {
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    return date.toLocaleString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
+const buildSessionLimitHtml = data => {
+    const sessions = (data.active_sessions || [])
+        .map((session, index) => {
+            const marker = session.will_be_removed ? " <strong>(akan logout)</strong>" : "";
+            return `<li>${index + 1}. ${session.platform} — ${formatSessionDate(session.login_at)}${marker}</li>`;
+        })
+        .join("");
+
+    const displaced = data.displaced_session?.platform || "sesi paling lama";
+
+    return `
+        <p>Perangkat ini: <strong>${data.current_device || "Perangkat Lain"}</strong></p>
+        <p>Sesi aktif Anda (${(data.active_sessions || []).length}/3):</p>
+        <ul style="text-align:left;margin:0 auto;display:inline-block;">${sessions}</ul>
+        <p style="margin-top:12px;">Jika lanjut, <strong>${displaced}</strong> akan logout otomatis.</p>
+    `;
+};
+
 const Login = () => {
     const router = useRouter();
     const dispatch = useDispatch();
+    const loginInFlightRef = useRef(false);
 
     useEffect(() => {
         (async () => {
@@ -37,34 +70,50 @@ const Login = () => {
         })();
     }, []);
 
-    const handleLogin = async (identity, password) => {
-        try {
-            const response = await Api.authLogin(identity, password, "login");
-            Toast.fire({ icon: "success", title: "Signed in successfully" });
+    const completeLogin = response => {
+        if (response?.session_notice?.message) {
+            Toast.fire({ icon: "info", title: response.session_notice.message });
+        }
 
-            dispatch(loginUser(response.token));
-            router.push("/dashboard");
+        Toast.fire({ icon: "success", title: "Signed in successfully" });
+        dispatch(loginUser(response.token));
+        router.push("/dashboard");
+    };
+
+    const handleLogin = async (identity, password, confirmDisplace = false, rememberMe = false) => {
+        if (loginInFlightRef.current) return;
+
+        loginInFlightRef.current = true;
+
+        try {
+            const response = await Api.authLogin(identity, password, confirmDisplace, rememberMe);
+            completeLogin(response);
         } catch (error) {
-            const message = error.response?.data?.message || error.message;
-            if (message === "User sudah login") {
+            const responseData = error.response?.data;
+            const message = responseData?.message || error.message;
+
+            if (error.response?.status === 409 && message === "SESSION_LIMIT_REACHED") {
+                loginInFlightRef.current = false;
+
                 const alert = await Swal.fire({
-                    icon: "question",
-                    title: "User sudah login. Lanjutkan login?",
+                    icon: "warning",
+                    title: "Terdeteksi login di perangkat ke-4",
+                    html: buildSessionLimitHtml(responseData),
                     showCancelButton: true,
-                    confirmButtonText: "Ya, lanjutkan",
-                    cancelButtonText: "Tidak",
+                    confirmButtonText: "Lanjutkan Login",
+                    cancelButtonText: "Batal",
                 });
 
                 if (alert.isConfirmed) {
-                    const response = await Api.authLogin(identity, password, "destroy_session");
-                    Toast.fire({ icon: "success", title: "Signed in successfully" });
-
-                    dispatch(loginUser(response.token));
-                    router.push("/dashboard");
+                    await handleLogin(identity, password, true, rememberMe);
                 }
-            } else {
-                Toast.fire({ icon: "error", title: message ?? "Login failed" });
+
+                return;
             }
+
+            Toast.fire({ icon: "error", title: message ?? "Login failed" });
+        } finally {
+            loginInFlightRef.current = false;
         }
     };
 
@@ -88,7 +137,12 @@ const Login = () => {
                                         onSubmit={e => {
                                             e.preventDefault();
 
-                                            handleLogin(e.target.username.value, e.target.password.value);
+                                            handleLogin(
+                                                e.target.username.value,
+                                                e.target.password.value,
+                                                false,
+                                                Boolean(e.target.remember?.checked)
+                                            );
                                         }}
                                     >
                                         <Form.Group className="mb-3">
@@ -105,7 +159,7 @@ const Login = () => {
                                             <Form.Control type="password" name="password" id="password" required />
                                         </Form.Group>
                                         <Form.Group className="d-flex align-items-center">
-                                            <Form.Check inline type="checkbox" name="remember" label="Remember Me" id="inline-checkbox-1" checked />
+                                            <Form.Check inline type="checkbox" name="remember" label="Remember Me" id="inline-checkbox-1" />
                                             <Button variant="primary" type="submit" className="ms-auto">
                                                 Masuk <LogIn size={16} />
                                             </Button>

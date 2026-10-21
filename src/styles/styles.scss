@@ -69,3 +69,122 @@ $success: #7952b3;
 .container {
     padding-bottom: 100px;
 }
+
+.titik-box {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+}
+
+.titik-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-bottom: 2px;
+}
+
+.titik-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.bottle-info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.bottle-row {
+    width: 100%;
+    text-align: left;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 14px 10px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bottle-row.is-active {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.bottle-row.is-ready {
+    border-color: #16a34a;
+    background: #f0fdf4;
+}
+
+.bottle-row.is-ready.is-active {
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16);
+}
+
+.bottle-row-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.bottle-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.bottle-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #111827;
+    white-space: nowrap;
+}
+
+.bottle-count small {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.bottle-row.is-ready .bottle-count,
+.bottle-row.is-ready .bottle-name {
+    color: #15803d;
+}
+
+.bottle-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+    margin: 8px 0 6px;
+}
+
+.bottle-bar span {
+    display: block;
+    height: 100%;
+    background: #2563eb;
+    border-radius: 999px;
+}
+
+.bottle-row.is-ready .bottle-bar span {
+    background: #16a34a;
+}
+
+.bottle-meta {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.bottle-row.is-ready .bottle-meta {
+    color: #15803d;
+}
