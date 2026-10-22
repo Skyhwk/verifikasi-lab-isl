@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Modal, Button, Form, Card } from "react-bootstrap";
+import { Modal, Button, Form, Card, Table } from "react-bootstrap";
 import QrScanner from "qr-scanner";
 import Swal from "sweetalert2";
 import { Check, QrCode, SwitchCamera, X } from "lucide-react";
@@ -31,6 +31,7 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
   const [noSampel, setNoSampel] = useState("");
   const [scanType, setScanType] = useState(null);
   const [penamaanTitik, setPenamaanTitik] = useState("");
+  const [totalParameter, setTotalParameter] = useState(null);
   const [activeBottle, setActiveBottle] = useState(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
 
@@ -122,6 +123,7 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
     setNoSampel("");
     setScanType(null);
     setPenamaanTitik("");
+    setTotalParameter(null);
     setActiveBottle(null);
     onHide();
   };
@@ -190,9 +192,14 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
         const isSampleNumber = String(value).includes("/");
         setScanType(isSampleNumber ? "sampel" : "botol");
         setNoSampel(resolvedNoSampel);
-        setScannedValue(resolvedNoSampel);
+        if (isSampleNumber) {
+          setScannedValue(resolvedNoSampel);
+        }
         setPenamaanTitik(response.penamaan_titik || "");
-        const bottlesWithDisiapkan = response.data_botol;
+        setTotalParameter(
+          response.total_parameter !== undefined ? response.total_parameter : null
+        );
+        const bottlesWithDisiapkan = response.data_botol || [];
 
         setDataBottles((prevBottles) => {
           let initialData = [];
@@ -203,14 +210,13 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
           ) {
             initialData = prevBottles;
           } else {
-            initialData = response.data_scan;
+            initialData = response.data_scan || [];
           }
 
-          const baseArray = initialData;
-
+          const baseArray = Array.isArray(initialData) ? initialData : [];
           const combined = [...baseArray];
 
-          response.data_botol.forEach((newItem) => {
+          (response.data_botol || []).forEach((newItem) => {
             const key = newItem.koding;
             const existingIndex = combined.findIndex(
               (item) => item.koding === key
@@ -218,8 +224,6 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
 
             if (existingIndex !== -1) {
               const existing = combined[existingIndex];
-              // console.log("Updating existing:", existing, "with:", newItem);
-
               combined[existingIndex] = {
                 ...existing,
                 ...newItem,
@@ -230,18 +234,34 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
                       (parseInt(newItem.add) || 0),
               };
             } else {
-              // console.log("Adding new item:", newItem);
-              combined.push({ ...newItem, jumlah: 0 });
+              combined.push({
+                ...newItem,
+                jumlah: parseInt(newItem.add) || 0,
+              });
             }
           });
-          return combined;
+
+          // Deduplikasi berdasarkan koding
+          const uniqueCombined = [];
+          const seenKeys = new Set();
+          combined.forEach((item) => {
+            if (item.koding && !seenKeys.has(item.koding)) {
+              seenKeys.add(item.koding);
+              uniqueCombined.push(item);
+            }
+          });
+
+          return uniqueCombined;
         });
-        setActiveBottle(bottlesWithDisiapkan[0]?.koding || null);
+
+        const scannedMatch = bottlesWithDisiapkan.find((b) => b.koding === value);
+        setActiveBottle(scannedMatch?.koding || bottlesWithDisiapkan[0]?.koding || null);
         Toast.fire({ icon: "success", title: response.message });
       } else {
         setNoSampel("");
         setScanType(null);
         setPenamaanTitik("");
+        setTotalParameter(null);
         setDataBottles([]);
         Toast.fire({
           icon: "error",
@@ -252,6 +272,7 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
       setNoSampel("");
       setScanType(null);
       setPenamaanTitik("");
+      setTotalParameter(null);
       setDataBottles([]);
       handleError(error);
     }
@@ -365,6 +386,13 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
                     if (noSampel && val === noSampel) return;
                     checkBottleData(val);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const val = e.target.value?.trim();
+                      if (val) checkBottleData(val);
+                    }
+                  }}
                   placeholder="Enter sample number or scan QR code"
                 />
                 <Button
@@ -375,50 +403,139 @@ const QRScannerModal = ({ show, onHide, fetchSamples }) => {
                   <QrCode size={16} />
                 </Button>
               </div>
-              {penamaanTitik ? (
-                <div className="titik-box mt-3">
-                  <span className="titik-label">Penamaan Titik</span>
-                  <div className="titik-value">{String(penamaanTitik).replace(/&amp;/g, "&")}</div>
+              {noSampel ? (
+                <div className="table-responsive mt-2 mb-2">
+                  <Table size="sm" borderless hover={false} className="mb-0 align-middle table-borderless" style={{ fontSize: "0.8rem" }}>
+                    <tbody>
+                      <tr>
+                        <td className="text-secondary fw-semibold py-1 ps-0 pe-1" style={{ width: "115px", whiteSpace: "nowrap" }}>
+                          No Sampel
+                        </td>
+                        <td className="text-center py-1 px-1 text-muted" style={{ width: "12px" }}>:</td>
+                        <td className="py-1 px-1 fw-bold font-monospace text-primary text-break">
+                          {noSampel}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="text-secondary fw-semibold py-1 ps-0 pe-1" style={{ whiteSpace: "nowrap" }}>
+                          Penamaan Titik
+                        </td>
+                        <td className="text-center py-1 px-1 text-muted">:</td>
+                        <td className="py-1 px-1 fw-semibold text-dark text-break">
+                          {penamaanTitik ? String(penamaanTitik).replace(/&amp;/g, "&") : "-"}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="text-secondary fw-semibold py-1 ps-0 pe-1" style={{ whiteSpace: "nowrap" }}>
+                          Total Parameter
+                        </td>
+                        <td className="text-center py-1 px-1 text-muted">:</td>
+                        <td className="py-1 px-1">
+                          <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: "0.72rem" }}>
+                            {totalParameter ?? 0} Parameter
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </Table>
                 </div>
               ) : null}
             </Form.Group>
           </div>
           {dataBottles && dataBottles.length > 0 && (
             <>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <h6 className="mb-0">Informasi Botol</h6>
-                <small className="text-muted">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="titik-label mb-0" style={{ fontSize: "0.72rem" }}>
+                  Informasi Botol
+                </span>
+                <small className="text-muted fw-semibold" style={{ fontSize: "0.75rem" }}>
                   {dataBottles.filter((bottle) => isReady(bottle)).length}/{dataBottles.length} lengkap
                 </small>
               </div>
-              <div className="bottle-info-list">
+              <div className="row g-1 g-sm-2 mb-3">
                 {dataBottles.map((bottle, index) => {
                   const prepared = Number(bottle.disiapkan || 0);
                   const qty = Number(bottle.jumlah || 0);
                   const ready = isReady(bottle);
                   const pct = prepared > 0 ? Math.min(100, Math.round((qty / prepared) * 100)) : 0;
                   const name = getBottleLabel(bottle);
+                  const isActive = activeBottle === bottle.koding;
+                  const colClass =
+                    dataBottles.length === 1
+                      ? "col-12"
+                      : dataBottles.length === 2
+                      ? "col-6"
+                      : "col-4";
 
                   return (
-                    <button
-                      key={index}
-                      type="button"
-                      className={`bottle-row${ready ? " is-ready" : ""}${activeBottle === bottle.koding ? " is-active" : ""}`}
-                      onClick={() => setActiveBottle(bottle.koding)}
-                    >
-                      <div className="bottle-row-main">
-                        <span className="bottle-name">{name}</span>
-                        <span className="bottle-count">
-                          {ready ? <Check size={16} /> : null}
-                          {qty}
-                          <small>/{prepared || 0}</small>
-                        </span>
+                    <div key={index} className={colClass}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setActiveBottle(bottle.koding)}
+                        className={`card h-100 p-2 text-start border ${
+                          ready
+                            ? "border-success bg-success-subtle bg-opacity-25"
+                            : isActive
+                            ? "border-primary shadow-sm"
+                            : "border-secondary-subtle bg-white"
+                        }`}
+                        style={{
+                          cursor: "pointer",
+                          borderRadius: "8px",
+                          boxShadow: isActive ? "0 0 0 2px rgba(13, 110, 253, 0.25)" : "none",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {/* Header: Nama Botol & Badge */}
+                        <div className="d-flex align-items-center justify-content-between mb-1 gap-1">
+                          <span
+                            className="fw-bold text-truncate text-dark"
+                            style={{ fontSize: "0.78rem" }}
+                            title={name}
+                          >
+                            {name}
+                          </span>
+                          <span
+                            className={`badge flex-shrink-0 ${
+                              ready
+                                ? "bg-success text-white"
+                                : qty > 0
+                                ? "bg-warning text-dark"
+                                : "bg-secondary text-white"
+                            }`}
+                            style={{ fontSize: "0.58rem", padding: "2px 4px", lineHeight: "1.2" }}
+                          >
+                            {ready ? "Lengkap" : qty > 0 ? "Sebagian" : "Belum"}
+                          </span>
+                        </div>
+
+                        {/* Body: Qty scan vs disiapkan */}
+                        <div className="d-flex align-items-baseline justify-content-between my-1">
+                          <span className="text-muted" style={{ fontSize: "0.68rem" }}>Discan:</span>
+                          <span className="fw-bolder" style={{ fontSize: "0.92rem" }}>
+                            {ready ? <Check size={12} className="text-success me-1" /> : null}
+                            <span className={ready ? "text-success" : qty > 0 ? "text-primary" : "text-dark"}>
+                              {qty}
+                            </span>
+                            <span className="text-muted fw-normal" style={{ fontSize: "0.74rem" }}>
+                              /{prepared}
+                            </span>
+                          </span>
+                        </div>
+
+                        {/* Footer: Progress bar */}
+                        <div
+                          className="progress mt-1"
+                          style={{ height: "3px", backgroundColor: "#e9ecef", borderRadius: "2px" }}
+                        >
+                          <div
+                            className={`progress-bar ${ready ? "bg-success" : "bg-primary"}`}
+                            style={{ width: `${pct}%`, transition: "width 0.3s ease" }}
+                          />
+                        </div>
                       </div>
-                      <div className="bottle-bar">
-                        <span style={{ width: `${pct}%` }} />
-                      </div>
-                      <div className="bottle-meta">{ready ? "Lengkap" : qty > 0 ? "Sebagian discan" : "Belum discan"}</div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
