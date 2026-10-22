@@ -71,88 +71,133 @@ $success: #7952b3;
 }
 
 .titik-box {
-    padding: 10px 12px;
-    border-radius: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
     background: #f8fafc;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #e2e8f0;
 }
 
 .titik-label {
     display: block;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 600;
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    color: #6b7280;
-    margin-bottom: 2px;
+    color: #64748b;
+    margin-bottom: 1px;
 }
 
 .titik-value {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     font-weight: 700;
-    color: #111827;
-    line-height: 1.35;
+    color: #0f172a;
+    line-height: 1.25;
     word-break: break-word;
 }
 
 .bottle-info-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+
+    @media (max-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 480px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 768px) {
+    .border-start-md {
+        border-left: 1px solid #e2e8f0 !important;
+    }
 }
 
 .bottle-row {
     width: 100%;
     text-align: left;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #e2e8f0;
     background: #fff;
-    border-radius: 12px;
-    padding: 12px 14px 10px;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    border-radius: 8px;
+    padding: 7px 10px;
+    transition: all 0.15s ease;
+}
+
+.bottle-row:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
 }
 
 .bottle-row.is-active {
     border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    background: #eff6ff;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
 }
 
 .bottle-row.is-ready {
-    border-color: #16a34a;
+    border-color: #86efac;
     background: #f0fdf4;
 }
 
 .bottle-row.is-ready.is-active {
-    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16);
+    border-color: #16a34a;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.16);
 }
 
 .bottle-row-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
 }
 
 .bottle-name {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #111827;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.bottle-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    line-height: 1.3;
+}
+
+.badge-ready {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.badge-partial {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.badge-empty {
+    background: #f1f5f9;
+    color: #64748b;
 }
 
 .bottle-count {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 1rem;
-    font-weight: 800;
-    color: #111827;
+    gap: 3px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
     white-space: nowrap;
 }
 
 .bottle-count small {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    color: #6b7280;
+    color: #64748b;
 }
 
 .bottle-row.is-ready .bottle-count,
@@ -161,11 +206,11 @@ $success: #7952b3;
 }
 
 .bottle-bar {
-    height: 6px;
+    height: 3px;
     border-radius: 999px;
-    background: #e5e7eb;
+    background: #e2e8f0;
     overflow: hidden;
-    margin: 8px 0 6px;
+    margin-top: 4px;
 }
 
 .bottle-bar span {
@@ -179,12 +224,3 @@ $success: #7952b3;
     background: #16a34a;
 }
 
-.bottle-meta {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #6b7280;
-}
-
-.bottle-row.is-ready .bottle-meta {
-    color: #15803d;
-}
